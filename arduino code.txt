@@ -1,0 +1,92 @@
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8,9,10,11,12,13); 
+
+#include "GravityTDS.h"
+
+#include <OneWire.h> 
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS A1
+#define TdsSensorPin A4 
+#define trigPin1 7 ////right
+#define echoPin1 6 
+OneWire oneWire(ONE_WIRE_BUS); 
+GravityTDS gravityTds;
+DallasTemperature sensors(&oneWire);
+float tdsValue = 0;
+int temp=0;
+float water_tm;
+long duration, distance,sensor1,sensor2;
+
+void setup()
+{
+ Serial.begin(115200);
+ lcd.begin(16,2);
+ sensors.begin();
+ gravityTds.setPin(TdsSensorPin);
+ gravityTds.setAref(5.0);  //reference voltage on ADC, default 5.0V on Arduino UNO
+ gravityTds.setAdcRange(1024);  //1024 for 10bit ADC;4096 for 12bit ADC
+ gravityTds.begin();   //initialization
+ pinMode(trigPin1, OUTPUT);
+ pinMode(echoPin1, INPUT);
+}
+ 
+  void loop()
+  { 
+    sensors.requestTemperatures();
+    gravityTds.setTemperature(sensors.getTempCByIndex(0));  // set the temperature and execute temperature compensation
+    gravityTds.update();  //sample and calculate
+    tdsValue = gravityTds.getTdsValue();  // then get the value
+    water_tm=sensors.getTempCByIndex(0);    //lcd.setCursor(0, 0);
+    ultrasensor(trigPin1, echoPin1);
+    sensor1 = distance;
+
+    Serial.print("sensor1=");
+    Serial.println(sensor1);
+ 
+    
+    lcd.setCursor(0, 0);
+    lcd.print("Temp   Tds  Lvl");
+ 
+    lcd.setCursor(0, 1);
+    lcd.print(sensors.getTempCByIndex(0),1);
+  
+    
+    lcd.setCursor(7, 1);
+    lcd.print(tdsValue,0);
+   
+    
+    lcd.setCursor(12, 1);
+    lcd.print(sensor1);
+   
+    delay(10);
+    
+    delay(1000);
+    lcd.clear();
+    String anlog = "";
+    
+    anlog+= "{";
+    anlog+= "\"anloga\":";
+    anlog+= "\""+String(water_tm)+"\",";
+    anlog+= "\"anlogb\":";
+    anlog+= "\""+String(tdsValue)+"\",";
+    anlog+= "\"anlogc\":";
+    anlog+= "\""+String(sensor1)+"\",";
+    anlog+= "\"anlogd\":";
+    anlog+= "\""+String(sensor1)+"\"";
+    anlog+= "}";
+    Serial.print('\r');
+    Serial.print(anlog);
+    delay(10);
+    Serial.print('\n');
+  }
+
+ void ultrasensor(int trigPin,int echoPin)
+ { 
+  digitalWrite(trigPin, LOW);  // Added this line
+  delayMicroseconds(2); // Added this line
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10); // Added this line
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = (duration/2) / 29.1;
+ }
